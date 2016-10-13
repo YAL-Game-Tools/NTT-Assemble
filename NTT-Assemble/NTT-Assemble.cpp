@@ -111,14 +111,13 @@ FILE* fopen_wrap(char* path, int mode) {
 	}
 	return r;
 }
-char* path_exe = "nuclearthrone.exe";
-char* path_p1 = "nuclearthrone-1.part";
-char* path_p2 = "nuclearthrone-2.part";
-char* path_win = "data.win";
-char path_bck[64] = "nuclearthrone-original (YYYY-MM-DD hh-mm-ss).exe";
+char* path_exe = "data.win";
+char* path_p1 = "nuclearthrone-99.part";
+//char* path_win = "data.win";
+char path_bck[64] = "data-original (YYYY-MM-DD hh-mm-ss).win";
 /// Updates path_bck. There was a library function for this too.
 void path_bck_proc() {
-	int i = 23;
+	int i = 14;
 	time_t now_t = time(0);
 	struct tm * now = localtime(&now_t);
 	int year = now->tm_year + 1900;
@@ -145,18 +144,12 @@ void path_bck_proc() {
 /// splits a preprocessed executable into .part files
 int main_preproc() {
 	FILE* exe = seek_chunk(path_exe, CH_AUDO);
-	unsigned int aus; fread(&aus, 4, 1, exe);
 	long aup = ftell(exe);
 	// p1:
 	FILE* rp1 = fopen_wrap(path_p1, 1);
 	fseek(exe, 0, SEEK_SET);
 	fcopy(exe, rp1, aup);
 	fclose(rp1);
-	// p2:
-	FILE* rp2 = fopen_wrap(path_p2, 1);
-	fseek(exe, aup + aus, SEEK_SET);
-	fcopy_all(exe, rp2);
-	fclose(rp2);
 	//
 	fclose(exe);
 	return 0;
@@ -198,7 +191,7 @@ int main_import(int argc, char** argv) {
 int main_assemble(bool backup) {
 	FILE* exe;
 	//
-	printf("Making a backup of the original executable...\n");
+	printf("Making a backup of the original data.win...\n");
 	if (backup) {
 		exe = fopen(path_exe, "rb");
 		if (exe) {
@@ -207,19 +200,17 @@ int main_assemble(bool backup) {
 			fcopy_all(exe, bck);
 			fclose(exe);
 			fclose(bck);
-		} else printf("Original executable is not there..?\n");
+		} else printf("Original file is not there..?\n");
 	}
 	//
-	printf("Reassembling Nuclear Throne Together...\n");
+	printf("Reassembling Nuclear Throne u99...\n");
 	//
 	FILE* rp1 = seek_chunk(path_p1, CH_AUDO);
 	long rawStart = dataStart;
 	unsigned int rawLen; fread(&rawLen, 4, 1, rp1);
 	long rawPos = ftell(rp1);
 	//
-	FILE* rp2 = fopen_wrap(path_p2, 0);
-	//
-	FILE* win = seek_chunk(path_win, CH_AUDO);
+	FILE* win = seek_chunk(path_bck, CH_AUDO);
 	long winStart = dataStart;
 	unsigned int winLen; fread(&winLen, 4, 1, win);
 	long winPos = ftell(win);
@@ -231,18 +222,17 @@ int main_assemble(bool backup) {
 	fcopy(rp1, exe, rawPos);
 	fclose(rp1);
 	// copy audio from data.win:
+	fwrite(&winLen, 4, 1, exe);
 	fcopy_assets(win, exe, winStart, rawStart);
 	fcopy(win, exe, winPos + winLen - ftell(win));
 	fclose(win);
 	// padding:
+	printf("Padding: %d\n", rawLen - winLen);
 	fwrite_z(exe, rawLen - winLen);
-	// copy p2 (trail):
-	fcopy_all(rp2, exe);
-	fclose(rp2);
 	//
 	fclose(exe);
 	if (backup) {
-		printf("All done! Press any key to exit.\n");
+		printf("All done!\nhttps://soundcloud.com/superjoebob/spp-are-you-happy-now\nPress any key to exit.\n");
 		quit(0);
 	} // no need to require a key press if ran with parameters
 	return 0;
