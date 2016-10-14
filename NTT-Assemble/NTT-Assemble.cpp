@@ -144,6 +144,7 @@ void path_bck_proc() {
 /// splits a preprocessed executable into .part files
 int main_preproc() {
 	FILE* exe = seek_chunk(path_exe, CH_AUDO);
+	unsigned int aus; fread(&aus, 4, 1, exe);
 	long aup = ftell(exe);
 	// p1:
 	FILE* rp1 = fopen_wrap(path_p1, 1);
@@ -222,12 +223,10 @@ int main_assemble(bool backup) {
 	fcopy(rp1, exe, rawPos);
 	fclose(rp1);
 	// copy audio from data.win:
-	fwrite(&winLen, 4, 1, exe);
 	fcopy_assets(win, exe, winStart, rawStart);
 	fcopy(win, exe, winPos + winLen - ftell(win));
 	fclose(win);
 	// padding:
-	printf("Padding: %d\n", rawLen - winLen);
 	fwrite_z(exe, rawLen - winLen);
 	//
 	fclose(exe);
