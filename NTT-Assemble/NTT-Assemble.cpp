@@ -1,12 +1,17 @@
 #include "stdafx.h"
-#include <stdlib.h>
+#ifdef WIN32
 #include <conio.h>
+#endif
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctime>
 #define fquit(...) { printf(__VA_ARGS__); printf("\n"); fflush(stdout); quit(); }
 //
 void quit(int status = 1) {
+    #ifdef WIN32
 	_getch();
+    #endif
 	exit(status);
 }
 /// reads n bytes from f1 and writes them to f2
@@ -111,11 +116,19 @@ FILE* fopen_wrap(char* path, int mode) {
 	}
 	return r;
 }
+#ifdef WIN32
 char* path_exe = "nuclearthrone.exe";
 char* path_p1 = "nuclearthrone-1.part";
 char* path_p2 = "nuclearthrone-2.part";
 char* path_win = "data.win";
 char path_bck[64] = "nuclearthrone-original (YYYY-MM-DD hh-mm-ss).exe";
+#else
+char* path_exe = "assets/game.unx";
+char* path_p1 = "game-1.part";
+char* path_p2 = "game-2.part";
+char* path_win = "assets/game.bck.unx";
+char path_bck[64] = "nuclearthrone-original (YYYY-MM-DD hh-mm-ss)";
+#endif
 /// Updates path_bck. There was a library function for this too.
 void path_bck_proc() {
 	int i = 23;
@@ -172,6 +185,7 @@ int main_export(int argc, char** argv) {
 	fclose(exe);
 	fclose(win);
 	printf("All done!");
+    return 0;
 }
 int main_import(int argc, char** argv) {
 	if (argc < 5) fquit("Usage: -import [executable path] [data.win path] [output path]");
@@ -194,12 +208,14 @@ int main_import(int argc, char** argv) {
 	fclose(win);
 	fclose(dst);
 	printf("All done!");
+    return 0;
 }
 int main_assemble(bool backup) {
 	FILE* exe;
 	//
-	printf("Making a backup of the original executable...\n");
+    #ifdef WIN32
 	if (backup) {
+        printf("Making a backup of the original executable...\n");
 		exe = fopen(path_exe, "rb");
 		if (exe) {
 			path_bck_proc();
@@ -209,6 +225,15 @@ int main_assemble(bool backup) {
 			fclose(bck);
 		} else printf("Original executable is not there..?\n");
 	}
+    #else
+    exe = fopen_wrap(path_exe, 0);
+    if (exe) {
+        FILE* bck = fopen_wrap(path_win, 1);
+        fcopy_all(exe, bck);
+        fclose(exe);
+        fclose(bck);
+    }
+    #endif
 	//
 	printf("Reassembling Nuclear Throne Together...\n");
 	//
@@ -257,6 +282,6 @@ int main(int argc, char** argv) {
 		if (strcmp(par, "-nobackup") == 0) return main_assemble(false);
 		fquit("`%s` is not a known parameter.", par);
 		return 0;
-	} else return main_assemble(true);
+    } else return main_assemble(true);
 }
 
