@@ -1,4 +1,9 @@
 #include "stdafx.h"
+// compiler-specific, I think?:
+#ifdef _WIN32
+#define WIN32
+#endif
+//
 #ifdef WIN32
 #include <conio.h>
 #endif
@@ -44,13 +49,16 @@ void fwrite_z(FILE* f, int n) {
 		n -= i;
 	}
 }
+
 const unsigned int CH_FORM = 0x4d524f46;
 const unsigned int CH_GEN8 = 0x384e4547;
 const unsigned int CH_AUDO = 0x4f445541;
+const unsigned int CH_OPTN = 0x4e54504f;
 long dataStart;
 unsigned int dataSize;
-FILE* seek_chunk(char* path, unsigned int chunk) {
-	FILE* f = fopen(path, "rb");
+FILE* seek_chunk(char* path, unsigned int chunk, bool update) {
+	FILE* f = fopen(path, update ? "rb+" : "rb");
+	fseek(f, 0, SEEK_SET);
 	if (!f) fquit("Couldn't open file `%s`. Did you follow the instructions?", path);
 	printf("Looking for data chunk in `%s`...\n", path);
 	// seek 'FORM'[size]'GEN8':
@@ -93,6 +101,9 @@ FILE* seek_chunk(char* path, unsigned int chunk) {
 	fclose(f);
 	quit();
 	return NULL;
+}
+FILE* seek_chunk(char* path, unsigned int chunk) {
+	return seek_chunk(path, chunk, false);
 }
 /// Realigns and copies asset list header between files.
 void fcopy_assets(FILE* f1, FILE* f2, long s1, long s2) {
@@ -210,6 +221,32 @@ int main_import(int argc, char** argv) {
 	printf("All done!");
     return 0;
 }
+int main_offline(int argc, char** argv) {
+	int next = -1;
+	if (argc > 2) {
+		char* par = argv[2];
+		next = (strcmp(par, "1") == 0) || (strcmp(par, "true") == 0) ? 1 : 0;
+	}
+	FILE* src = seek_chunk(path_exe, CH_OPTN, true);
+	fseek(src, 15, SEEK_CUR);
+	unsigned char flags = 0;
+	fread(&flags, 1, 1, src);
+	if (next >= 0) {
+		if (((flags & 4) != 0) == (next != 0)) {
+			printf("Offline mode is already %sabled.\n", next ? "en" : "dis");
+			fclose(src);
+			return 0;
+		}
+	} else next = (flags & 4) == 0;
+	if (next) flags |= 4; else flags &= ~4;
+	fseek(src, -1, SEEK_CUR);
+	fwrite(&flags, 1, 1, src);
+	fclose(src);
+	if (next) {
+		printf("Offline mode enabled: No online features or replays, but higher performance.\n");
+	} else printf("Offline mode disabled: Online features and replays, but lower performance.\n");
+	return 0;
+}
 int main_assemble(bool backup) {
 	FILE* exe;
 	//
@@ -272,14 +309,27 @@ int main_assemble(bool backup) {
 	} // no need to require a key press if ran with parameters
 	return 0;
 }
+int main_help() {
+	printf("Supported options:\n");
+	printf("-help: Show this text\n");
+	printf("(no parameters): Assemble while making a backup of executable.");
+	printf("-nobackup: Assemble without making backups.");
+	printf("-preproc: Split a modified NTT executable into .part files\n");
+	printf("-export [exe path] [data.win path]: Export assets from an executable.\n");
+	printf("-import [exe path] [data.win path] [out path]: Import modifies assets into an executable.\n");
+	printf("-ntt-offline [optional:value]: Toggles or changes NTT' offline-mode flag.\n");
+	return 0;
+}
 int main(int argc, char** argv) {
 	if (argc > 1) {
 		char* par = argv[1];
 		// launched with parameters
+		if (strcmp(par, "-help") == 0) return main_help();
 		if (strcmp(par, "-preproc") == 0) return main_preproc();
 		if (strcmp(par, "-export") == 0) return main_export(argc, argv);
 		if (strcmp(par, "-import") == 0) return main_import(argc, argv);
 		if (strcmp(par, "-nobackup") == 0) return main_assemble(false);
+		if (strcmp(par, "-ntt-offline") == 0) return main_offline(argc, argv);
 		fquit("`%s` is not a known parameter.", par);
 		return 0;
     } else return main_assemble(true);
