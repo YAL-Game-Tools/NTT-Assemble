@@ -83,6 +83,9 @@ FILE* seek_chunk(char* path, unsigned int chunk, bool update) {
 	if (chunk == CH_FORM) {
 		fseek(f, dataStart, SEEK_SET);
 		return f;
+	} else if (chunk == CH_GEN8) {
+		fseek(f, dataStart + 8, SEEK_SET);
+		return f;
 	}
 	// seek the according chunk if specified:
 	long dataEnd = dataStart + dataSize;
@@ -247,6 +250,33 @@ int main_offline(int argc, char** argv) {
 	} else printf("Offline mode disabled: Online features and replays, but lower performance.\n");
 	return 0;
 }
+int main_steamapi(int argc, char** argv) {
+	int next = -1;
+	if (argc > 2) {
+		char* par = argv[2];
+		next = (strcmp(par, "1") == 0) || (strcmp(par, "true") == 0) ? 1 : 0;
+	}
+	FILE* src = seek_chunk(path_exe, CH_GEN8, true);
+	fseek(src, 120, SEEK_CUR);
+	unsigned int appid_nt = 242680;
+	unsigned int appid = 0;
+	fread(&appid, 4, 1, src);
+	if (next >= 0) {
+		if (appid == appid_nt * (next != 0)) {
+			printf("Steam is already %sabled.\n", next ? "en" : "dis");
+			fclose(src);
+			return 0;
+		}
+	} else next = appid != appid_nt;
+	if (next) appid = appid_nt; else appid = 0;
+	fseek(src, -4, SEEK_CUR);
+	fwrite(&appid, 4, 1, src);
+	fclose(src);
+	if (next) {
+		printf("Steam API enabled.\n");
+	} else printf("Steam API disabled.\n");
+	return 0;
+}
 int main_assemble(bool backup) {
 	FILE* exe;
 	//
@@ -330,6 +360,7 @@ int main(int argc, char** argv) {
 		if (strcmp(par, "-import") == 0) return main_import(argc, argv);
 		if (strcmp(par, "-nobackup") == 0) return main_assemble(false);
 		if (strcmp(par, "-ntt-offline") == 0) return main_offline(argc, argv);
+		if (strcmp(par, "-ntt-steamapi") == 0) return main_steamapi(argc, argv);
 		fquit("`%s` is not a known parameter.", par);
 		return 0;
     } else return main_assemble(true);
