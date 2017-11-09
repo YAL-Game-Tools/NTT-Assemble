@@ -4,3 +4,5 @@ NTT-Assemble/Debug/
 NTT-Assemble/Release/
 Release/
 ipch/
+/bin
+/ntt-assemble/NTT-Assemble.vcxproj.user
