@@ -1,6 +1,8 @@
 package;
 
 #if (cs)
+import cs.NativeArray;
+import cs.types.UInt8;
 import cs.system.io.FileStream;
 #else
 import haxe.io.Bytes;
@@ -53,6 +55,20 @@ class DataStream {
 	public inline function close():Void {
 		stream.Close();
 	}
+	private static inline var copyBufSize = 4096;
+	private static var copyBuf:NativeArray<UInt8> = new NativeArray(copyBufSize);
+	public inline function writeStream(src:DataStream, size:Int) {
+		var srcStream = src.stream;
+		var buf = copyBuf;
+		while (size > 0) {
+			var want = copyBufSize;
+			if (want > size) want = size;
+			var got = srcStream.Read(buf, 0, want);
+			if (got == 0) break;
+			stream.Write(buf, 0, got);
+			size -= got;
+		}
+	}
 	#else
 	
 	#end
@@ -77,9 +93,6 @@ class DataStream {
 		return b.toString();
 	}
 	//
-	public function writeStream(ds:DataStream, size:Int) {
-		while (--size >= 0) writeByte(ds.readByte());
-	}
 	public function writeStreamAll(ds:DataStream) {
 		writeStream(ds, ds.length - ds.position);
 	}

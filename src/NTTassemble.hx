@@ -121,9 +121,15 @@ class NTTassemble {
 		var out = writeStream(outPath);
 		//
 		DataFile.assemble(out, sources[0], sources[1], sources[2], function(appid) {
+			out.close();
 			if (appid != 0 && !FileSystem.exists("steam_appid.txt")) {
 				sys.io.File.saveContent("steam_appid.txt", Std.string(appid));
 			}
+			if (outPath == nttPath) {
+				print(["Reminder: NTT is now in " + nttPath
+					+ " instead of replacing the original game executable."]);
+			}
+			allGood();
 			exit(["All good!"], true);
 		}, function(err:String) {
 			exit([err]);

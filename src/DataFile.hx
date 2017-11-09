@@ -51,7 +51,8 @@ class DataFile {
 			try {
 				var input = file.stream;
 				input.position = 0;
-				while (true) {
+				var len = input.length;
+				while (input.position < len) {
 					//
 					if (input.readInt32() != chunk32m("FORM")) continue;
 					var data_size = input.readInt32();
@@ -65,16 +66,18 @@ class DataFile {
 					file.start = data_start;
 					break;
 				}
-				//
-				chunks["FORM"] = file.start - 4;
-				chunks["GEN8"] = file.start;
-				var data_end = file.start + file.size;
-				while (input.position < data_end) {
-					var chName = input.readCString(4);
-					chunks.set(chName, input.position);
-					input.skip(input.readInt32());
-				}
-				//
+				if (input.position < len) {
+					//
+					chunks["FORM"] = file.start - 4;
+					chunks["GEN8"] = file.start;
+					var data_end = file.start + file.size;
+					while (input.position < data_end) {
+						var chName = input.readCString(4);
+						chunks.set(chName, input.position);
+						input.skip(input.readInt32());
+					}
+					//
+				} else amiss(fail, file, null); 
 			} catch (x:Dynamic) {
 				file.start = -2;
 				amiss(fail, file, x);
