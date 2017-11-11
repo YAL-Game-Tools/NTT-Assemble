@@ -125,7 +125,7 @@ class DataFile {
 	}
 	//
 	public function toggleOffline(done:TaskCb<Bool>, fail:TaskCb<String>) {
-		loadAndSeek("GEN8", function(file:DataFile) {
+		loadAndSeek("OPTN", function(file:DataFile) {
 			var stream = file.stream;
 			stream.skip(15);
 			var flags = stream.readByte();
