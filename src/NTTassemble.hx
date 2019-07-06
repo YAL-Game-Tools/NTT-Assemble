@@ -1,5 +1,6 @@
 package;
 import sys.FileSystem;
+import NativeExtras.*;
 
 /**
  * ...
@@ -7,7 +8,6 @@ import sys.FileSystem;
  */
 class NTTassemble {
 	//
-	private static var getcOnExit:Bool = false;
 	private static inline var part1path = "nuclearthrone-1.part";
 	private static inline var part2path = "nuclearthrone-2.part";
 	private static inline var ntPath = "nuclearthrone.exe";
@@ -27,25 +27,6 @@ class NTTassemble {
 		]);
 	}
 	//
-	private static function print(lines:Array<String>) {
-		for (line in lines) Sys.println(line);
-	}
-	private static function prompt() {
-		Sys.print("> ");
-		var c = Sys.getChar(true);
-		Sys.println("");
-		return c;
-	}
-	private static function allGood() {
-		exit(["All good!"], true);
-	}
-	private static function seeYa() {
-		Sys.println("See you later!");
-		Sys.exit(0);
-	}
-	private static function unknown() {
-		exit(["That's not a known option."]);
-	}
 	private static function pickGame(ask:String):String {
 		print([
 			ask,
@@ -58,55 +39,6 @@ class NTTassemble {
 			case "2".code: nttPath;
 			case "0".code: seeYa(); null;
 			default: unknown(); null;
-		}
-	}
-	//
-	public static function exit<T>(details:Array<String>, ok:Bool = false):T {
-		print(details);
-		if (getcOnExit) {
-			Sys.println("Press any key to exit.");
-			Sys.getChar(false);
-		}
-		Sys.exit(ok ? 0 : 1);
-		return null;
-	}
-	public static function openFile(path:String, rw:Bool = false):DataFile {
-		if (!FileSystem.exists(path)) {
-			return exit([
-				path + " does not exist.",
-				"Make sure that you have extracted all files?",
-			]);
-		} else try {
-			var stream = rw ? DataStream.open(path, false) : DataStream.read(path);
-			return new DataFile(path, stream);
-		} catch (err:Dynamic) {
-			return exit([
-				"Couldn't open " + path + " for reading: " + err
-			]);
-		}
-	}
-	public static function readStream(path:String):DataStream {
-		if (!FileSystem.exists(path)) {
-			return exit([
-				path + " does not exist.",
-				"Make sure that you have extracted all files?",
-			]);
-		} else try {
-			return DataStream.read(path);
-		} catch (err:Dynamic) {
-			return exit([
-				"Couldn't open " + path + " for reading: " + err
-			]);
-		}
-	}
-	public static function writeStream(path:String):DataStream {
-		try {
-			return DataStream.write(path);
-		} catch (err:Dynamic) {
-			return exit([
-				"Couldn't open " + path + " for writing: " + err,
-				"Make sure that it's not in use (e.g. game running in background)?"
-			]);
 		}
 	}
 	//
