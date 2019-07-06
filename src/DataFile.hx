@@ -100,7 +100,7 @@ class DataFile {
 	public function replaceAssets(src:DataStream, done:TaskCb<Bool>, fail:TaskCb<String>) {
 		loadAndSeek("FORM", function(file:DataFile) {
 			Task.next(function(done, fail, file:DataFile) {
-				var size0 = file.stream.readInt32() + 4;
+				var size0 = file.stream.readInt32() + 8;
 				var size1 = src.length;
 				if (size0 == size1) {
 					file.stream.skip( -8);
