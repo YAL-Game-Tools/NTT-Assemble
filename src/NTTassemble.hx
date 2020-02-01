@@ -15,10 +15,12 @@ class NTTassemble {
 	private static inline var dataPath = "data.win";
 	private static function findDataPath() {
 		for (check in [
-			dataPath,
 			ntPath,
+			dataPath,
 			nttPath,
-		]) if (FileSystem.exists(check)) {
+		]) if (FileSystem.exists(check)
+			&& FileSystem.stat(check).size > 90 * 1024 * 1024 // must be at least 90MB!
+		) {
 			return check;
 		}
 		return exit([
