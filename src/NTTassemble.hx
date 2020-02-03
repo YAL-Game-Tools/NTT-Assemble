@@ -1,4 +1,5 @@
 package;
+import haxe.ds.Vector;
 import sys.FileSystem;
 import NativeExtras.*;
 
@@ -8,16 +9,21 @@ import NativeExtras.*;
  */
 class NTTassemble {
 	//
-	private static inline var part1path = "nuclearthrone-1.part";
-	private static inline var part2path = "nuclearthrone-2.part";
-	private static inline var ntPath = "nuclearthrone.exe";
-	private static inline var nttPath = "NuclearThroneTogether.exe";
-	private static inline var dataPath = "data.win";
+	private static inline var part1path = "ntt-1.part";
+	private static inline var part2path = "ntt-2.part";
+	private static inline var part3path = "ntt-3.part";
+	
+	private static inline var baseExePath = "nuclearthrone.exe";
+	private static inline var baseDataPath = "data.win";
+	
+	private static inline var modExePath = "NuclearThroneTogether.exe";
+	private static inline var modDataPath = "data.ntt";
+	
 	private static function findDataPath() {
 		for (check in [
-			ntPath,
-			dataPath,
-			nttPath,
+			baseExePath,
+			baseDataPath,
+			modDataPath,
 		]) if (FileSystem.exists(check)
 			&& FileSystem.stat(check).size > 90 * 1024 * 1024 // must be at least 90MB!
 		) {
@@ -37,15 +43,15 @@ class NTTassemble {
 			"0: Exit",
 		]);
 		return switch (prompt()) {
-			case "1".code: ntPath;
-			case "2".code: nttPath;
+			case "1".code: baseExePath;
+			case "2".code: modDataPath;
 			case "0".code: seeYa(); null;
 			default: unknown(); null;
 		}
 	}
 	//
 	public static function assemble(?outPath:String) {
-		if (outPath == null) outPath = nttPath;
+		if (outPath == null) outPath = modDataPath;
 		Sys.println("Looking for files...");
 		//
 		var srcPath = findDataPath();
@@ -59,10 +65,11 @@ class NTTassemble {
 			if (appid != 0 && !FileSystem.exists("steam_appid.txt")) {
 				sys.io.File.saveContent("steam_appid.txt", Std.string(appid));
 			}
-			if (outPath == nttPath) {
-				print(["Reminder: NTT is now in " + nttPath
+			if (outPath == modExePath) {
+				print(["Reminder: NTT is now in " + modExePath
 					+ " instead of replacing the original game executable."]);
 			}
+			sys.io.File.copy(part3path, modExePath);
 			allGood();
 			exit(["All good!"], true);
 		}, function(err:String) {
@@ -72,8 +79,49 @@ class NTTassemble {
 		return null;
 	}
 	//
+	static function asciiToWide(s:String):Vector<Int> {
+		var r:Vector<Int> = new Vector(s.length << 1);
+		for (i in 0 ... s.length) {
+			r[i << 1] = s.charCodeAt(i);
+			r[(i << 1) + 1] = 0;
+		}
+		return r;
+	}
+	public static function patchDataPath(?exePath:String, ?exePath2:String) {
+		if (exePath == null) exePath = baseExePath;
+		if (exePath2 == null) exePath2 = modExePath;
+		Sys.println('Patching $exePath and copying to $exePath2...');
+		var a = DataStream.read(exePath);
+		if (FileSystem.exists(exePath2)) FileSystem.deleteFile(exePath2);
+		var b = DataStream.open(exePath2, true);
+		var find = asciiToWide('data.win');
+		var findCount = find.length;
+		var n = a.length;
+		while (a.position < n) {
+			var match = true;
+			for (i in 0 ... findCount) {
+				if (a.position >= n) {
+					match = false;
+					break;
+				}
+				var d = a.readByte();
+				if (d != find[i]) {
+					for (k in 0 ... i) b.writeByte(find[k]);
+					b.writeByte(d);
+					match = false;
+					break;
+				}
+			}
+			if (match) {
+				for (d in asciiToWide('data.ntt')) b.writeByte(d);
+			}
+		}
+		a.close();
+		b.close();
+		Sys.println('OK!');
+	}
 	public static function preproc(?exePath:String) {
-		if (exePath == null) exePath = nttPath;
+		if (exePath == null) exePath = modDataPath;
 		var file = openFile(exePath);
 		file.loadAndSeek("AUDO", function(_) {
 			var input = file.stream;
@@ -99,7 +147,7 @@ class NTTassemble {
 	//
 	public static function dataExport(path:String, ?outPath:String) {
 		if (path == null) exit(["Expected an executable' name"]);
-		if (outPath == null) outPath = dataPath;
+		if (outPath == null) outPath = baseDataPath;
 		var out = writeStream(outPath);
 		openFile(path).extractAssets(out, function(_) {
 			out.close();
@@ -110,7 +158,7 @@ class NTTassemble {
 	}
 	//
 	public static function dataImport(path:String, ?srcPath:String) {
-		if (srcPath == null) srcPath = dataPath;
+		if (srcPath == null) srcPath = baseDataPath;
 		var file = openFile(path, true);
 		file.replaceAssets(readStream(srcPath), function(_) {
 			file.stream.close();
@@ -192,6 +240,7 @@ class NTTassemble {
 			case "-preproc": preproc(args[1]);
 			case "-export": dataExport(args[1], args[2]);
 			case "-import": dataImport(args[1], args[2]);
+			case "-ntt-reroute": patchDataPath(args[1], args[2]);
 			case "-ntt-offline": toggleOffline(args[1]);
 			case "-ntt-steamapi": toggleSteam(args[1]);
 			case "-help": {
@@ -219,18 +268,12 @@ class NTTassemble {
 		print([
 			"Hello! What would you like to do?",
 			"1: Install Nuclear Throne Together",
-			"2: Extract data.win (for messing with)",
-			"3: Replace data.win (after messing with)",
-			"4: Toggle Steam",
-			"5: Toggle offline mode",
+			"2: Toggle Steam",
 			"0: Exit",
 		]);
 		switch (prompt()) {
 			case "1".code: assemble();
-			case "2".code: dataExport(pickGame("From where?"));
-			case "3".code: dataImport(pickGame("To where?"));
-			case "4".code: toggleSteam(pickGame("In what?"));
-			case "5".code: toggleOffline(nttPath);
+			case "2".code: toggleSteam(pickGame("In what?"));
 			case "0".code: seeYa(); return;
 			default: unknown(); return;
 		}
